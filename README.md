@@ -56,11 +56,31 @@ HRSOFT/
 
 ## Cài đặt và Chạy
 
-### Với Docker (Khuyến nghị)
+### Quick Start (Khuyến nghị)
 
-1. **Clone dự án và di chuyển vào thư mục:**
+**Windows PowerShell:**
+```powershell
+.\dev.ps1 setup
+.\dev.ps1 up
+```
+
+**Windows Command Prompt:**
+```cmd
+dev.bat setup
+dev.bat up
+```
+
+**Linux/Mac:**
 ```bash
-cd HRSOFT
+make setup && make up
+```
+
+### Với Docker (Manual)
+
+1. **Setup môi trường:**
+```bash
+# Tạo file .env từ template
+cp .env.example .env
 ```
 
 2. **Chạy toàn bộ hệ thống:**
@@ -167,6 +187,116 @@ curl -X GET "http://localhost/api/users/employees/" \
 # Trong từng service directory
 alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
+```
+
+### Prerequisites Check
+
+```bash
+# Kiểm tra MySQL setup
+.\dev.ps1 db-check
+
+# Nếu chưa có MySQL, xem hướng dẫn
+Get-Content database\MYSQL_SETUP.md
+```
+
+### Database Operations
+
+```bash
+# Deploy database schema
+.\dev.ps1 db-deploy
+# hoặc
+dev.bat db-deploy
+
+# Backup database
+.\dev.ps1 db-backup
+
+# Restore database
+.\dev.ps1 db-restore <backup_file>
+
+# Reset database (WARNING: xóa toàn bộ dữ liệu)
+.\dev.ps1 db-reset
+```
+
+## 🎭 Demo Mode (Không cần MySQL)
+
+Nếu chưa cài đặt MySQL, bạn có thể xem demo các tính năng:
+
+```bash
+# Xem tổng quan hệ thống
+.\dev.ps1 demo
+
+# Xem database schema
+.\demo.ps1 schema
+
+# Xem tính năng hệ thống  
+.\demo.ps1 features
+
+# Xem cấu trúc dự án
+.\demo.ps1 structure
+
+# Xem hướng dẫn setup
+.\demo.ps1 setup
+
+# Xem API endpoints
+.\demo.ps1 api
+```
+
+## 🗄️ Database Schema
+
+HRSOFT sử dụng thiết kế database chuẩn hóa (normalized) với MySQL, bao gồm các module:
+
+### Core Modules
+- **Organizations**: Companies, departments, positions, locations
+- **Employee Management**: Employee records, positions, work schedules  
+- **Attendance**: Time tracking, work schedules, overtime
+- **Leave Management**: Leave types, requests, balances
+- **Payroll**: Salary components, payroll cycles, records
+- **Performance**: Review cycles, goals, evaluations
+- **Training**: Programs, sessions, enrollments
+- **Asset Management**: Categories, assets, assignments
+- **Recruitment**: Job postings, candidates, applications
+
+### System Features
+- Multi-tenancy support via company isolation
+- Complete audit trail for all changes
+- Flexible configuration system
+- File attachment support
+- Notification system
+- Performance optimized with strategic indexing
+
+Chi tiết schema xem tại: [`database/README.md`](database/README.md)
+
+## Development Commands
+
+### Windows PowerShell
+```powershell
+.\dev.ps1 help           # Xem tất cả lệnh
+.\dev.ps1 setup          # Setup môi trường
+.\dev.ps1 up             # Start services
+.\dev.ps1 down           # Stop services
+.\dev.ps1 logs           # Xem logs
+.\dev.ps1 health         # Kiểm tra health
+.\dev.ps1 test           # Chạy tests
+.\dev.ps1 clean          # Dọn dẹp containers
+.\dev.ps1 dev-up         # Start development mode
+```
+
+### Windows Command Prompt
+```cmd
+dev.bat help             # Xem tất cả lệnh
+dev.bat setup            # Setup môi trường
+dev.bat up               # Start services
+dev.bat down             # Stop services
+dev.bat health           # Kiểm tra health
+```
+
+### Linux/Mac (Makefile)
+```bash
+make help                # Xem tất cả lệnh
+make setup && make up    # Setup và start
+make down                # Stop services
+make clean               # Dọn dẹp
+make test                # Chạy tests
 ```
 
 ## Testing

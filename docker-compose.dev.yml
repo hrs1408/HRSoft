@@ -1,0 +1,107 @@
+version: '3.8'
+
+# Development version of docker-compose with additional services
+services:
+  # Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: hrsoft_db
+      POSTGRES_USER: hrsoft_user
+      POSTGRES_PASSWORD: hrsoft_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hrsoft-network
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - hrsoft-network
+
+  # PgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hrsoft.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - hrsoft-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://hrsoft_user:hrsoft_password@postgres/hrsoft_db
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=auth-service
+      - DEBUG=true
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./services/auth-service:/app/services/auth-service
+      - ./shared:/app/shared
+    networks:
+      - hrsoft-network
+    restart: unless-stopped
+
+  # User Service
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://hrsoft_user:hrsoft_password@postgres/hrsoft_db
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=user-service
+      - AUTH_SERVICE_URL=http://auth-service:8000
+      - DEBUG=true
+    depends_on:
+      - postgres
+      - redis
+      - auth-service
+    volumes:
+      - ./services/user-service:/app/services/user-service
+      - ./shared:/app/shared
+    networks:
+      - hrsoft-network
+    restart: unless-stopped
+
+  # Nginx Load Balancer
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - hrsoft-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  hrsoft-network:
+    driver: bridge

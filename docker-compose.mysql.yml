@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: hrsoft_auth
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - hrsoft-network
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - hrsoft-network
+
+  # phpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin:latest
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - hrsoft-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=mysql://root:root_password@mysql:3306/hrsoft_auth
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=auth-service
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - hrsoft-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=mysql://root:root_password@mysql:3306/hrsoft_hr
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=user-service
+      - AUTH_SERVICE_URL=http://auth-service:8000
+    depends_on:
+      - mysql
+      - redis
+      - auth-service
+    networks:
+      - hrsoft-network
+
+  # Nginx Load Balancer
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - hrsoft-network
+
+volumes:
+  mysql_data:
+
+networks:
+  hrsoft-network:
+    driver: bridge
